@@ -6,19 +6,34 @@ import (
 	"time"
 )
 
+const (
+	NoExpiration Expiration = -1
+	DefaultExpiration  Expiration = 1<<42 //from doc approx 3600 seconds -> 1h
+
+)
+
+type Expiration time.Duration
+
+type Pods struct {
+	pods 		[]Pod
+}
 
 type Pod struct{
-	pods 		[]string
+	Name string
 	Expiration 	int64
 }
 
-// it makes the cache invisible but we can still access his methods
+type Namespace struct{
+	Name string
+}
+
+// makes the cache invisible but methods usable -> separate external Cache to internal cache :)
 type Cache struct {
 	*cache
 }
 
 type cache struct {
-	namespaces 		map[string]Pod
+	namespaces 		map[Namespace]Pods
 	expirationTime 	time.Duration 
 	lock 			sync.Mutex
 }
@@ -26,7 +41,7 @@ type cache struct {
 func New(expiration time.Duration) *Cache{
 	return &Cache{
 		cache: &cache{
-			namespaces: 		make(map[string]Pod),
+			namespaces: 		make(map[Namespace]Pods),
 			expirationTime: expiration,
 		},
 	}
@@ -34,7 +49,7 @@ func New(expiration time.Duration) *Cache{
 
 
 // TODO : add a force parameter for updating? 
-func (c *cache) Set (namespace string, pod []string) error {
+func (c *cache) Set (namespace Namespace, listPods []Pod) error {
 	c.lock.Lock()
 
 	if _,exists := c.namespaces[namespace]; exists {
@@ -42,15 +57,32 @@ func (c *cache) Set (namespace string, pod []string) error {
 		return fmt.Errorf("item %s already exists", namespace)
 	}
 
-	c.namespaces[namespace] = Pod{
-		pods: pod,
+	c.namespaces[namespace] = Pods{
+		pods: listPods,
 	}
 	c.lock.Unlock()
 
 	return nil
 }
 
-func (c *cache) Add (namespace string, pod string) {}
+func (c * cache) set (namespace Namespace, pod string) error {
+	if _,exists :=  c.namespaces[namespace] ; exists {
+
+	}
+
+	return nil
+}
+
+func (c *cache) Add (namespace Namespace, pod string) error {
+	c.lock.Lock()
+
+	if _,exists := c.namespaces[namespace]; exists {
+		c.lock.Unlock()
+		return fmt.Errorf("item %s already exists", namespace)
+	}
+
+	return nil
+}
 
 func (c *cache) Delete (namespace string, pod string){}
 
