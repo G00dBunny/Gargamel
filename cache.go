@@ -8,19 +8,20 @@ import (
 
 const (
 	NoExpiration Expiration = -1
-	DefaultExpiration  Expiration = 1<<42 //from doc approx 3600 seconds -> 1h
+	DefaultExpiration  Expiration = 0 //from doc approx 3600 seconds -> 1h
+	// DefaultExpiration  Expiration = 1<<42 
 
 )
 
 type Expiration time.Duration
 
 type Pods struct {
-	pods 		[]Pod
+	pods 		[]*Pod
+	expiration Expiration
 }
 
 type Pod struct{
 	Name string
-	Expiration 	int64
 }
 
 type Namespace struct{
@@ -33,15 +34,15 @@ type Cache struct {
 }
 
 type cache struct {
-	namespaces 		map[Namespace]Pods
-	expirationTime 	time.Duration 
+	namespaces 		map[*Namespace]*Pods
+	expirationTime 	Expiration
 	lock 			sync.Mutex
 }
 
-func New(expiration time.Duration) *Cache{
+func New(expiration Expiration) *Cache{
 	return &Cache{
 		cache: &cache{
-			namespaces: 		make(map[Namespace]Pods),
+			namespaces: 	make(map[*Namespace]*Pods),
 			expirationTime: expiration,
 		},
 	}
@@ -49,15 +50,17 @@ func New(expiration time.Duration) *Cache{
 
 
 // TODO : add a force parameter for updating? 
-func (c *cache) Set (namespace Namespace, listPods []Pod) error {
+func (c *cache) Set (namespace *Namespace, listPods []*Pod) error {
 	c.lock.Lock()
 
-	if _,exists := c.namespaces[namespace]; exists {
+	if _,exists := c.namespaces[namespace]; !exists {
 		c.lock.Unlock()
-		return fmt.Errorf("item %s already exists", namespace)
+		return fmt.Errorf("item %s already exists", namespace.Name)
 	}
 
-	c.namespaces[namespace] = Pods{
+
+
+	c.namespaces[namespace] = &Pods{
 		pods: listPods,
 	}
 	c.lock.Unlock()
@@ -65,21 +68,40 @@ func (c *cache) Set (namespace Namespace, listPods []Pod) error {
 	return nil
 }
 
-func (c * cache) set (namespace Namespace, pod string) error {
-	if _,exists :=  c.namespaces[namespace] ; exists {
+func (c * cache) set (namespace *Namespace, pod *Pod, expiration Expiration) error {
+	var e int64
 
+	if expiration == DefaultExpiration{
+		expiration = Expiration(c.expirationTime)
 	}
+
+	if expiration > 0 {
+		e = time.Now().Add(time.Duration(expiration)).UnixNano()
+	}
+
+
+	podlist := c.namespaces[namespace]
+	podlist.pods = append(podlist.pods[:], pod)
+	podlist.expiration = Expiration(e)
+
+
+	c.namespaces[namespace] = podlist
+
 
 	return nil
 }
 
-func (c *cache) Add (namespace Namespace, pod string) error {
+func (c *cache) Add (namespace *Namespace, pod *Pod, expiration Expiration) error {
 	c.lock.Lock()
 
-	if _,exists := c.namespaces[namespace]; exists {
+	if _,exists := c.namespaces[namespace]; !exists {
 		c.lock.Unlock()
-		return fmt.Errorf("item %s already exists", namespace)
+		return fmt.Errorf("item %s already exists", namespace.Name)
 	}
+
+	c.set(namespace,pod,expiration)
+
+	c.lock.Unlock()
 
 	return nil
 }
