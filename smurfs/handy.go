@@ -6,3 +6,5 @@ package smurfs
 func MakePointer[T any ] (t T) *T {
 	return &t
 }
+
+

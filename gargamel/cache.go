@@ -26,8 +26,8 @@ const (
 type Expiration time.Duration
 
 type Pods struct {
-	pods 		[]*Pod
-	expiration *Expiration
+	Pods 		[]*Pod
+	Expiration *Expiration
 }
 
 type Pod struct{
@@ -71,7 +71,7 @@ func (c *cache) Set (namespace *Namespace, listPods []*Pod) error {
 	}
 
 	c.namespaces[namespace] = &Pods{
-		pods: listPods,
+		Pods: listPods,
 	}
 	c.lock.Unlock()
 
@@ -91,8 +91,8 @@ func (c * cache) set (namespace *Namespace, pod *Pod, expiration *Expiration) er
 
 
 	podlist := c.namespaces[namespace]
-	podlist.pods = append(podlist.pods[:], pod)
-	podlist.expiration = smurfs.MakePointer(Expiration(e))
+	podlist.Pods = append(podlist.Pods[:], pod)
+	podlist.Expiration = smurfs.MakePointer(Expiration(e))
 
 
 	c.namespaces[namespace] = podlist
@@ -127,4 +127,18 @@ func (c *cache) Delete (namespace string, pod string){}
 
 func Refresh() *Cache{
 	return &Cache{}
+}
+
+func (c *Cache) String() string {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	result := "Cache Contents:\n"
+	for nsPtr, pods := range c.namespaces {
+		result += fmt.Sprintf("Namespace: %s\n", nsPtr.Name)
+		for _, pod := range pods.Pods {
+			result += fmt.Sprintf("  - Pod: %s\n", pod.Name)
+		}
+	}
+	return result
 }

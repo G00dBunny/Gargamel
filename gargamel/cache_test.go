@@ -161,7 +161,7 @@ func TestCacheSetAndAdd(t *testing.T) {
 			}
 
 			if tc.setupNamespace != nil {
-				actual := len(cache.namespaces[tc.setupNamespace].pods)
+				actual := len(cache.namespaces[tc.setupNamespace].Pods)
 				if actual != tc.expectPodCount {
 					t.Errorf("expected %d pods, got %d", tc.expectPodCount, actual)
 				}
