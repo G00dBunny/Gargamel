@@ -1,3 +1,11 @@
+/*
+*	Caching but for pods and namespaces for the cloud-bunny project
+*
+*
+*
+*
+ */
+
 package main
 
 import (
@@ -8,8 +16,8 @@ import (
 
 const (
 	NoExpiration Expiration = -1
-	DefaultExpiration  Expiration = 0 //from doc approx 3600 seconds -> 1h
-	// DefaultExpiration  Expiration = 1<<42 
+	DefaultExpiration  Expiration = 0 
+	// HourExpiration  Expiration = 1<<42 //from doc approx 3600 seconds -> 1h
 
 )
 
@@ -109,8 +117,6 @@ func (c *cache) Add (namespace *Namespace, pod *Pod, expiration Expiration) erro
 func (c *cache) Delete (namespace string, pod string){}
 
 //TODO : Add a flushing option
-
-//TODO : Add a janitor smurf using a tick that will check if items are expired
 
 //TODO : Add a expiration smurf that will expire all namespaces
 
