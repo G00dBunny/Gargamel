@@ -61,10 +61,11 @@ func New(expiration *Expiration) *Cache{
 
 
 // TODO : add a force parameter for updating? 
+
 func (c *cache) Set (namespace *Namespace, listPods []*Pod) error {
 	c.lock.Lock()
 
-	if _,exists := c.namespaces[namespace]; !exists {
+	if _,exists := c.namespaces[namespace]; exists {
 		c.lock.Unlock()
 		return fmt.Errorf("item %s already exists", namespace.Name)
 	}
@@ -76,6 +77,7 @@ func (c *cache) Set (namespace *Namespace, listPods []*Pod) error {
 
 	return nil
 }
+
 func (c * cache) set (namespace *Namespace, pod *Pod, expiration *Expiration) error {
 	var e int64
 
@@ -104,7 +106,7 @@ func (c *cache) Add (namespace *Namespace, pod *Pod, expiration *Expiration) err
 
 	if _,exists := c.namespaces[namespace]; !exists {
 		c.lock.Unlock()
-		return fmt.Errorf("item %s already exists", namespace.Name)
+		return fmt.Errorf("item %s does not exist", namespace.Name)
 	}
 
 	c.set(namespace, pod, expiration)
