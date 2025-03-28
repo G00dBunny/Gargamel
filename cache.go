@@ -1,7 +1,7 @@
 /*
 *	Caching but for pods and namespaces for the cloud-bunny project
 *
-*
+*   Ideas : Count high restart count after 24h
 *
 *
  */
@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/G00dBunny/Gargamel/smurfs"
 )
 
 const (
@@ -25,7 +27,7 @@ type Expiration time.Duration
 
 type Pods struct {
 	pods 		[]*Pod
-	expiration Expiration
+	expiration *Expiration
 }
 
 type Pod struct{
@@ -41,13 +43,14 @@ type Cache struct {
 	*cache
 }
 
+
 type cache struct {
 	namespaces 		map[*Namespace]*Pods
-	expirationTime 	Expiration
+	expirationTime 	*Expiration
 	lock 			sync.Mutex
 }
 
-func New(expiration Expiration) *Cache{
+func New(expiration *Expiration) *Cache{
 	return &Cache{
 		cache: &cache{
 			namespaces: 	make(map[*Namespace]*Pods),
@@ -66,8 +69,6 @@ func (c *cache) Set (namespace *Namespace, listPods []*Pod) error {
 		return fmt.Errorf("item %s already exists", namespace.Name)
 	}
 
-
-
 	c.namespaces[namespace] = &Pods{
 		pods: listPods,
 	}
@@ -75,22 +76,21 @@ func (c *cache) Set (namespace *Namespace, listPods []*Pod) error {
 
 	return nil
 }
-
-func (c * cache) set (namespace *Namespace, pod *Pod, expiration Expiration) error {
+func (c * cache) set (namespace *Namespace, pod *Pod, expiration *Expiration) error {
 	var e int64
 
-	if expiration == DefaultExpiration{
-		expiration = Expiration(c.expirationTime)
+	if expiration == smurfs.MakePointer(DefaultExpiration){
+		expiration = c.expirationTime
 	}
 
-	if expiration > 0 {
-		e = time.Now().Add(time.Duration(expiration)).UnixNano()
+	if *expiration > 0 {
+		e = time.Now().Add(time.Duration(*expiration)).UnixNano()
 	}
 
 
 	podlist := c.namespaces[namespace]
 	podlist.pods = append(podlist.pods[:], pod)
-	podlist.expiration = Expiration(e)
+	podlist.expiration = smurfs.MakePointer(Expiration(e))
 
 
 	c.namespaces[namespace] = podlist
@@ -99,7 +99,7 @@ func (c * cache) set (namespace *Namespace, pod *Pod, expiration Expiration) err
 	return nil
 }
 
-func (c *cache) Add (namespace *Namespace, pod *Pod, expiration Expiration) error {
+func (c *cache) Add (namespace *Namespace, pod *Pod, expiration *Expiration) error {
 	c.lock.Lock()
 
 	if _,exists := c.namespaces[namespace]; !exists {
@@ -107,7 +107,7 @@ func (c *cache) Add (namespace *Namespace, pod *Pod, expiration Expiration) erro
 		return fmt.Errorf("item %s already exists", namespace.Name)
 	}
 
-	c.set(namespace,pod,expiration)
+	c.set(namespace, pod, expiration)
 
 	c.lock.Unlock()
 
